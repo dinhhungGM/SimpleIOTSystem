@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  db:
+    container_name: mongodb
+    image: mongo:4.4
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo:/data/db
+    networks:
+      - mongo-net
+    restart: always
+  backend:
+    container_name: backend
+    build: .
+    ports:
+      - "4000:4000"
+    networks:
+      - mongo-net
+    restart: always
+    environment:
+      - MONGO_DB_URL=mongodb://root:root@db:27017/iot?authSource=admin
+      - NODE_ENV=production
+networks:
+  mongo-net:
+volumes:
+  mongo:
+
+
