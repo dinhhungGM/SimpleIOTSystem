@@ -3,9 +3,17 @@ const app = express();
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const mqtt = require("mqtt");
+const LED_TOPIC = "wemos_d1/led";
+const DHT_TEMP_TOPIC = "wemos_d1/temp";
+const DHT_HUMIDITY_TOPIC = "wemos_d1/humidity";
+const cors = require("cors");
+const helmet = require("helmet");
+const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+app.use(helmet());
 
 if (process.env.NODE_ENV !== "production") {
   const morgan = require("morgan");
@@ -25,7 +33,7 @@ async function connectAndRetry() {
   }
 }
 
-// connectAndRetry();
+//connectAndRetry();
 
 // model
 const deviceSchema = new Schema(
@@ -56,6 +64,12 @@ const device = mongoose.model("devices", deviceSchema);
 const log = mongoose.model("logs", logSchema);
 
 // routes
+
+// control led
+app.post("/api/led", async (req, res) => {
+  client.publish(LED_TOPIC, req.body.value);
+  res.send("OK");
+});
 
 // create device
 app.post("/api/devices", async (req, res) => {
@@ -90,18 +104,22 @@ app.get("/api/devices", async (req, res) => {
 // logs
 
 app.post("/api/logs", async (req, res) => {
-  const log = new log({
+  const newLog = new log({
     deviceId: req.body.deviceId,
     sensor: req.body.sensor,
     value: req.body.value,
     ip: req.body.ip,
     deviceName: req.body.deviceName,
   });
+  console.log(req.body);
   try {
-    await log.save();
+
+
+    
+    // await log.save();
     res.status(201).json({
       message: "Log created successfully",
-      data: log,
+      data: newLog,
       error: null,
     });
   } catch (error) {
@@ -123,19 +141,32 @@ app.get("/api/logs", async (req, res) => {
 });
 
 // mqtt broker
-// const client = mqtt.connect(`${process.env.MQTT_BROKER_URL}`);
+const client = mqtt.connect(`${process.env.MQTT_BROKER_URL}`);
 
-// client.on("connect", function () {
-//   client.subscribe("presence", {
-//       qos: 1,
-//   });
-// });
-
-// client.on("message", function (topic, message) {
-//   // message is Buffer
-//   console.log(`[${topic}]: ${message.toString()}`);
-// });
-
-app.listen(4000, () => {
-  console.log("Server is running on port 3000");
+client.on("connect", function () {
+  client.subscribe(LED_TOPIC, {
+      qos: 1,
+  });
+  client.subscribe(DHT_TEMP_TOPIC, {
+      qos: 1,
+  });
+  client.subscribe(DHT_HUMIDITY_TOPIC, {
+      qos: 1,
+  });
 });
+
+
+
+client.on("message", function (topic, message) {
+  // message is Buffer
+  // console.log(`[${topic}]: ${message.toString()}`);
+
+  if(topic == LED_TOPIC || topic == DHT_TEMP_TOPIC || topic == DHT_HUMIDITY_TOPIC){
+    // console.log(`(${new Date()}) - [${topic}]: ${message.toString()}`);
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+

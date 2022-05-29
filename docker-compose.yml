@@ -24,6 +24,8 @@ services:
     environment:
       - MONGO_DB_URL=mongodb://root:root@db:27017/iot?authSource=admin
       - NODE_ENV=production
+    env_file:
+      - .env
 networks:
   mongo-net:
 volumes:
